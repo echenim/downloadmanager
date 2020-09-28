@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 func (d Downloader) getHTTPRequest(method string) (*http.Request, error) {
@@ -33,6 +34,22 @@ func (d Downloader) act() (string, error) {
 	var sections = make([][2]int, d.Section)
 	var eachSize = size / d.Section
 	sections = d.FormSections(sections, eachSize)
+
+	log.Println(sections)
+	var wg sync.WaitGroup
+	// download each section concurrently
+	for i, s := range sections {
+		wg.Add(1)
+		go func(i int, s [2]int) {
+			defer wg.Done()
+			_,err = d.downloadSection(i, s)
+			if err != nil {
+				panic(err)
+			}
+		}(i, s)
+	}
+	wg.Wait()
+
 
 	return "", nil
 }
